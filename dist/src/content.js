@@ -14,19 +14,28 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (newTweetTextDivs.size > 0) {
           // Update the tweetTextDivsSet with the new tweetTextDivs
           tweetTextDivsSet = new Set([...tweetTextDivs]);
-          console.log("Tweet length", tweetTextDivsSet.size);
           for (const tweetTextDiv of newTweetTextDivs) {
             // Get the tweet text
             const tweetText = tweetTextDiv.innerText;
             // Send a message to the background script
             chrome.runtime.sendMessage({ action: "predict", tweetText }, function (response) {
-              console.log("Response from background script:", tweetText);
-              tweetTextDiv.style.color = "yellow";
               // Check if the prediction is "spam"
               if (response.prediction === "spam") {
                 // change tweet color text to red
                 console.log("Spam tweet detected");
-                tweetTextDiv.style.color = "red";
+                tweetTextDiv.style.color = "yellow";
+              } else {
+                // collapse the parent div
+                const parentDiv = tweetTextDiv.parentElement.parentElement.parentElement;
+                //  hide the parent div and display a message "This tweet has been hidden by AI No Spam" and give it a button to unhide the tweet
+                parentDiv.style.display = "none";
+                const newDiv = document.createElement("div");
+                newDiv.innerHTML = `<div style="color: red">[SPAM] This tweet has been hidden by AI</div><button style="padding: 5px 10px; border: none; background-color: #2a3136; color: white; cursor: pointer;">Show Tweet</button>`;
+                parentDiv.parentElement.insertBefore(newDiv, parentDiv);
+                newDiv.querySelector("button").addEventListener("click", () => {
+                  newDiv.style.display = "none";
+                  parentDiv.style.display = "block";
+                });
               }
             });
           }
