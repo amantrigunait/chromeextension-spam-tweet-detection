@@ -1,16 +1,8 @@
 console.log("Hello from your Chrome extensions!, content.js");
 
-// Select the element you want to watch for
-// / Select the element you want to watch for
 document.addEventListener("DOMContentLoaded", async function () {
   const targetNode = document.body;
-
-  chrome.runtime.sendMessage({
-    modelUrl: chrome.runtime.getURL("model.json"),
-    vocabUrl: chrome.runtime.getURL("vocab"),
-    labelsUrl: chrome.runtime.getURL("labels.txt"),
-  });
-
+  let tweetTextDivsSet = new Set();
   // Create a new observer
   const observer = new MutationObserver(function (mutationsList, observer) {
     // Loop through each mutation that occurred
@@ -18,20 +10,26 @@ document.addEventListener("DOMContentLoaded", async function () {
       // Check if the mutation added a div element with data-testid="tweetText"
       if (mutation.type === "childList") {
         const tweetTextDivs = document.querySelectorAll('div[data-testid="tweetText"]');
-        if (tweetTextDivs.length > 0) {
-          // Do something with the tweetTextDivs here
-          tweetTextDivs.forEach(function (tweetTextDiv) {
+        const newTweetTextDivs = new Set([...tweetTextDivs].filter((x) => !tweetTextDivsSet.has(x)));
+        if (newTweetTextDivs.size > 0) {
+          // Update the tweetTextDivsSet with the new tweetTextDivs
+          tweetTextDivsSet = new Set([...tweetTextDivs]);
+          console.log("Tweet length", tweetTextDivsSet.size);
+          for (const tweetTextDiv of newTweetTextDivs) {
+            // Get the tweet text
             const tweetText = tweetTextDiv.innerText;
-            console.log("Tweet text:", tweetText);
-            chrome.runtime.sendMessage({ action: "predict", tweetText: tweetText }, function (response) {
-              const predictedLabel = response.prediction;
-              console.log("Predicted label:", predictedLabel);
-              if (predictedLabel === "not spam") {
+            // Send a message to the background script
+            chrome.runtime.sendMessage({ action: "predict", tweetText }, function (response) {
+              console.log("Response from background script:", tweetText);
+              tweetTextDiv.style.color = "yellow";
+              // Check if the prediction is "spam"
+              if (response.prediction === "spam") {
+                // change tweet color text to red
+                console.log("Spam tweet detected");
                 tweetTextDiv.style.color = "red";
               }
             });
-          });
-          // Disconnect the observer so it stops watching for changes
+          }
         }
       }
     }
